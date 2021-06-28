@@ -8,18 +8,12 @@ using System.IO.Compression;
 
 namespace Replays_Unpack_CS
 {
-    class Chunked
-    {
-        public int index;
-        public byte[] chunk;
-    }
-
     class NetPacket
     {
         public uint size;
         public string type;
         public float time;
-        public byte[] rawData;
+        public MemoryStream rawData;
 
         public NetPacket(MemoryStream stream)
         {
@@ -35,14 +29,56 @@ namespace Replays_Unpack_CS
             type = BitConverter.ToUInt32(payloadType).ToString("X2");
             time = BitConverter.ToSingle(payloadTime);
 
-            rawData = new byte[size];
-            stream.Read(rawData);
+            var data = new byte[size];
+            stream.Read(data);
+            rawData = new MemoryStream(data);
         }
     }
 
+    class BinaryStream
+    {
+        private uint length;
+        public MemoryStream value;
+
+        public BinaryStream(MemoryStream stream)
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            var bLen = new byte[4];
+            stream.Read(bLen);
+            length = BitConverter.ToUInt32(bLen);
+            var bValue = new byte[length];
+            stream.Read(bValue);
+            value = new MemoryStream(bValue);
+        }
+    }
+
+    class EntityMethod
+    {
+        public uint entityId;
+        public uint messageId;
+        public BinaryStream data;
+
+        public EntityMethod(MemoryStream stream)
+        {
+            var bEntityId = new byte[4];
+            var bMessageId = new byte[4];
+
+            stream.Read(bEntityId);
+            stream.Read(bMessageId);
+
+            entityId = BitConverter.ToUInt32(bEntityId);
+            messageId = BitConverter.ToUInt32(bMessageId);
+
+            var payload = new MemoryStream();
+            stream.CopyTo(payload);
+            data = new BinaryStream(payload);
+        }
+    }
+
+
     class Program
     {
-        static IEnumerable<Chunked> ChunkData(byte[] data, int len = 8)
+        static IEnumerable<(int, byte[])> ChunkData(byte[] data, int len = 8)
         {
             int idx = 0;
             for (var s = 0; s <= data.Length; s += len)
@@ -57,13 +93,8 @@ namespace Replays_Unpack_CS
                     g = data[s..];
                 }
 
-                var c = new Chunked()
-                {
-                    index = idx,
-                    chunk = g
-                };
                 idx += 1;
-                yield return c;
+                yield return (idx, g);
             }
         }
 
@@ -100,7 +131,7 @@ namespace Replays_Unpack_CS
                     {
                         try
                         {
-                            var decrypted_block = BitConverter.ToInt64(bfish.Decrypt_ECB(chunk.chunk));
+                            var decrypted_block = BitConverter.ToInt64(bfish.Decrypt_ECB(chunk.Item2));
                             if (prev != 0)
                             {
                                 decrypted_block ^= prev;
@@ -113,7 +144,6 @@ namespace Replays_Unpack_CS
 
                         }
                     }
-                    // 78, DA VALID ZLIB HEADER.
                     compressedData.Seek(2, SeekOrigin.Begin); //DeflateStream doesn't strip the header so we strip it manually.
                     var decompressedData = new MemoryStream(); 
                     using (DeflateStream df = new(compressedData, CompressionMode.Decompress))
@@ -126,6 +156,12 @@ namespace Replays_Unpack_CS
                     {
                         var np = new NetPacket(decompressedData);
                         Console.WriteLine("{0}: {1}", np.time, np.type);
+                        if (np.type == "08")
+                        {
+                            var em = new EntityMethod(np.rawData);
+                            //Console.WriteLine(Encoding.UTF8.GetString(em.data.value.ToArray()));
+                            //Console.WriteLine("{0}: {1}", em.entityId, em.messageId);
+                        }
                     }
                 }
                 Console.ReadLine();
