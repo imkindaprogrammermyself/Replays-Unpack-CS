@@ -14,6 +14,32 @@ namespace Replays_Unpack_CS
         public byte[] chunk;
     }
 
+    class NetPacket
+    {
+        public uint size;
+        public string type;
+        public float time;
+        public byte[] rawData;
+
+        public NetPacket(MemoryStream stream)
+        {
+            var payloadSize = new byte[4];
+            var payloadType = new byte[4];
+            var payloadTime = new byte[4];
+
+            stream.Read(payloadSize);
+            stream.Read(payloadType);
+            stream.Read(payloadTime);
+
+            size = BitConverter.ToUInt32(payloadSize);
+            type = BitConverter.ToUInt32(payloadType).ToString("X2");
+            time = BitConverter.ToSingle(payloadTime);
+
+            rawData = new byte[size];
+            stream.Read(rawData);
+        }
+    }
+
     class Program
     {
         static IEnumerable<Chunked> ChunkData(byte[] data, int len = 8)
@@ -87,8 +113,8 @@ namespace Replays_Unpack_CS
 
                         }
                     }
-                    //78, DA. VALID ZLIB HEADER.
-                    compressedData.Seek(2, SeekOrigin.Begin); //SKIP THE HEADER
+                    // 78, DA VALID ZLIB HEADER.
+                    compressedData.Seek(2, SeekOrigin.Begin); //DeflateStream doesn't strip the header so we strip it manually.
                     var decompressedData = new MemoryStream(); 
                     using (DeflateStream df = new(compressedData, CompressionMode.Decompress))
                     {
@@ -98,22 +124,8 @@ namespace Replays_Unpack_CS
                     decompressedData.Seek(0, SeekOrigin.Begin);
                     while (decompressedData.Position != decompressedData.Length)
                     {
-                        var payloadSize = new byte[4];
-                        var payloadType = new byte[4];
-                        var payloadTime = new byte[4];
-
-                        decompressedData.Read(payloadSize);
-                        decompressedData.Read(payloadType);
-                        decompressedData.Read(payloadTime);
-
-                        var size = BitConverter.ToUInt32(payloadSize);
-                        var type = BitConverter.ToUInt32(payloadType);
-                        var time = BitConverter.ToSingle(payloadTime);
-
-                        var payload = new byte[size];
-                        decompressedData.Read(payload);
-
-                        Console.WriteLine("{0}: {1}: {2}", decompressedData.Position, time, type.ToString("X2"));
+                        var np = new NetPacket(decompressedData);
+                        Console.WriteLine("{0}: {1}", np.time, np.type);
                     }
                 }
                 Console.ReadLine();
