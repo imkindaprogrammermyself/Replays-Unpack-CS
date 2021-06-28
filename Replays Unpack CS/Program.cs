@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using BlowFishCS;
+using System.IO.Compression;
 
 namespace Replays_Unpack_CS
 {
@@ -87,7 +88,33 @@ namespace Replays_Unpack_CS
                         }
                     }
                     //78, DA. VALID ZLIB HEADER.
-                    Console.WriteLine(string.Join(",", Array.ConvertAll(compressedData.ToArray()[..2], b => b.ToString("X2"))));
+                    compressedData.Seek(2, SeekOrigin.Begin); //SKIP THE HEADER
+                    var decompressedData = new MemoryStream(); 
+                    using (DeflateStream df = new(compressedData, CompressionMode.Decompress))
+                    {
+                        df.CopyTo(decompressedData);
+                    }
+                    Console.WriteLine(decompressedData.Length);
+                    decompressedData.Seek(0, SeekOrigin.Begin);
+                    while (decompressedData.Position != decompressedData.Length)
+                    {
+                        var payloadSize = new byte[4];
+                        var payloadType = new byte[4];
+                        var payloadTime = new byte[4];
+
+                        decompressedData.Read(payloadSize);
+                        decompressedData.Read(payloadType);
+                        decompressedData.Read(payloadTime);
+
+                        var size = BitConverter.ToUInt32(payloadSize);
+                        var type = BitConverter.ToUInt32(payloadType);
+                        var time = BitConverter.ToSingle(payloadTime);
+
+                        var payload = new byte[size];
+                        decompressedData.Read(payload);
+
+                        Console.WriteLine("{0}: {1}: {2}", decompressedData.Position, time, type.ToString("X2"));
+                    }
                 }
                 Console.ReadLine();
             }
