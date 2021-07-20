@@ -12,7 +12,7 @@ namespace Replays_Unpack_CS
         public object construct(object[] args)
         {
             //Console.WriteLine("{0}, {1}", args);
-            return null;
+            return string.Format("{0}, {1}", args);
         }
     }
 }
