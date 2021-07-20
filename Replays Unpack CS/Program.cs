@@ -5,6 +5,7 @@ using System.Text;
 using System.IO;
 using BlowFishCS;
 using System.IO.Compression;
+using System.Collections;
 
 namespace Replays_Unpack_CS
 {
@@ -47,7 +48,7 @@ namespace Replays_Unpack_CS
             stream.Read(bLen);
             length = BitConverter.ToUInt32(bLen);
             var bValue = new byte[length];
-            stream.Read(bValue);            
+            stream.Read(bValue);
             value = new MemoryStream(bValue);
         }
     }
@@ -98,7 +99,7 @@ namespace Replays_Unpack_CS
 
         static void Main(string[] args)
         {
-            using (FileStream fs = File.OpenRead(@"C:\Projects\Python\replay-data-extract\sample_replays\20210622_224157_PJSD219-Kitakaze_19_OC_prey.wowsreplay"))
+            using (FileStream fs = File.OpenRead(@"C:\Games\World_of_Warships\replays\20210719_222343_PASC006-Atlanta-1942_45_Zigzag.wowsreplay"))
             {
                 byte[] bReplaySignature = new byte[4];
                 byte[] bReplayBlockCount = new byte[4];
@@ -117,81 +118,135 @@ namespace Replays_Unpack_CS
                 string sReplayJSONData = Encoding.UTF8.GetString(bReplayJSONData);
                 //Console.WriteLine(sReplayJSONData);
 
-                using (var memStream = new MemoryStream())
+                var memStream = new MemoryStream();
+
+                fs.CopyTo(memStream);
+                var sBfishKey = "\x29\xB7\xC9\x09\x38\x3F\x84\x88\xFA\x98\xEC\x4E\x13\x19\x79\xFB";
+                var bBfishKey = sBfishKey.Select(x => Convert.ToByte(x)).ToArray();
+                var bfish = new BlowFish(bBfishKey);
+                long prev = 0;
+                using var compressedData = new MemoryStream();
+                foreach (var chunk in ChunkData(memStream.ToArray()[8..]))
                 {
-                    fs.CopyTo(memStream);
-                    var sBfishKey = "\x29\xB7\xC9\x09\x38\x3F\x84\x88\xFA\x98\xEC\x4E\x13\x19\x79\xFB";
-                    var bBfishKey = sBfishKey.Select(x => Convert.ToByte(x)).ToArray();
-                    var bfish = new BlowFish(bBfishKey);
-                    long prev = 0;
-                    using var compressedData = new MemoryStream();
-                    foreach (var chunk in ChunkData(memStream.ToArray()[8..]))
+                    try
                     {
-                        try
+                        var decrypted_block = BitConverter.ToInt64(bfish.Decrypt_ECB(chunk.Item2));
+                        if (prev != 0)
                         {
-                            var decrypted_block = BitConverter.ToInt64(bfish.Decrypt_ECB(chunk.Item2));
-                            if (prev != 0)
-                            {
-                                decrypted_block ^= prev;
-                            }
-                            prev = decrypted_block;
-                            compressedData.Write(BitConverter.GetBytes(decrypted_block));
+                            decrypted_block ^= prev;
                         }
-                        catch (ArgumentOutOfRangeException)
-                        {
+                        prev = decrypted_block;
+                        compressedData.Write(BitConverter.GetBytes(decrypted_block));
+                    }
+                    catch (ArgumentOutOfRangeException)
+                    {
 
-                        }
                     }
-                    compressedData.Seek(2, SeekOrigin.Begin); //DeflateStream doesn't strip the header so we strip it manually.
-                    var decompressedData = new MemoryStream(); 
-                    using (DeflateStream df = new(compressedData, CompressionMode.Decompress))
+                }
+
+                compressedData.Seek(2, SeekOrigin.Begin); //DeflateStream doesn't strip the header so we strip it manually.
+                var decompressedData = new MemoryStream();
+                using (DeflateStream df = new(compressedData, CompressionMode.Decompress))
+                {
+                    df.CopyTo(decompressedData);
+                }
+                //Console.WriteLine(decompressedData.Length);
+                decompressedData.Seek(0, SeekOrigin.Begin);
+
+                while (decompressedData.Position != decompressedData.Length)
+                {
+                    var np = new NetPacket(decompressedData);
+                    //Console.WriteLine("{0}: {1}", np.time, np.type);
+                    if (np.type == "08")
                     {
-                        df.CopyTo(decompressedData);
-                    }
-                    //Console.WriteLine(decompressedData.Length);
-                    decompressedData.Seek(0, SeekOrigin.Begin);
-                    int called = 0;
-                    while (decompressedData.Position != decompressedData.Length)
-                    {
-                        var np = new NetPacket(decompressedData);
-                        //Console.WriteLine("{0}: {1}", np.time, np.type);
-                        if (np.type == "08")
+                        var em = new EntityMethod(np.rawData);
+                        if (em.messageId == 115) // This will probably change.
                         {
-                            var em = new EntityMethod(np.rawData);
-                            if (em.messageId == 115) // This will probably change.
+                            Console.WriteLine("{0}: {1}\n", em.entityId, em.messageId);
+
+                            var unk1 = new byte[8]; //?
+                            em.data.value.Read(unk1);
+
+                            var arenaID = new byte[8];
+                            em.data.value.Read(arenaID);
+
+                            var teamBuildTypeID = new byte[1];
+                            em.data.value.Read(teamBuildTypeID);
+
+                            var blobPreBattlesInfoSize = new byte[1];
+                            em.data.value.Read(blobPreBattlesInfoSize);
+                            var blobPreBattlesInfo = new byte[blobPreBattlesInfoSize[0]];
+                            em.data.value.Read(blobPreBattlesInfo);
+
+                            var blobPlayersStatesSize = new byte[1];
+                            em.data.value.Read(blobPlayersStatesSize);
+
+                            if (blobPlayersStatesSize[0] == 255)
                             {
-                                Console.WriteLine("{0}: {1}", em.entityId, em.messageId);
+                                var blobPlayerStatesRealSize = new byte[2];
+                                em.data.value.Read(blobPlayerStatesRealSize);
+                                var PlayerStatesRealSize = BitConverter.ToUInt16(blobPlayerStatesRealSize);
+                                em.data.value.Read(new byte[1]); //?
 
-                                var unk1 = new byte[8]; //?
-                                em.data.value.Read(unk1);
+                                // blobPlayerStates will contain players' information like account id, server realm, etc...
+                                // but it is serialized via Python's pickle.
+                                // We use Razorvine's Pickle Unpickler for that.
 
-                                var arenaID = new byte[8];
-                                em.data.value.Read(arenaID);
+                                var blobPlayerStates = new byte[PlayerStatesRealSize];
+                                em.data.value.Read(blobPlayerStates);
 
-                                var teamBuildTypeID = new byte[1];
-                                em.data.value.Read(teamBuildTypeID);
+                                Razorvine.Pickle.Unpickler.registerConstructor("CamouflageInfo", "CamouflageInfo", new CamouflageInfo());
+                                var k = new Razorvine.Pickle.Unpickler();
 
-                                var blobPreBattlesInfoSize = new byte[1];
-                                em.data.value.Read(blobPreBattlesInfoSize);
-                                var blobPreBattlesInfo = new byte[blobPreBattlesInfoSize[0]];
-                                em.data.value.Read(blobPreBattlesInfo);
 
-                                var blobPlayersStatesSize = new byte[1];
-                                em.data.value.Read(blobPlayersStatesSize);
+                                ArrayList players = (ArrayList)k.load(new MemoryStream(blobPlayerStates));
 
-                                if (blobPlayersStatesSize[0] == 255)
+                                foreach (ArrayList player in players)
                                 {
-                                    var blobPlayerStatesRealSize = new byte[2];
-                                    em.data.value.Read(blobPlayerStatesRealSize);
-                                    var PlayerStatesRealSize = BitConverter.ToUInt16(blobPlayerStatesRealSize);
-                                    em.data.value.Read(new byte[1]); //?
-
-                                    // blobPlayerStates will contain players' information like account id, server realm, etc...
-                                    // but it is serialized via Python's pickle and there's no deserializer for that in C#.
-                                    var blobPlayerStates = new byte[PlayerStatesRealSize];
-                                    em.data.value.Read(blobPlayerStates);
-                                    
+                                    foreach (object[] properties in player)
+                                    {
+                                        Console.WriteLine("{0}: {1}", Constants.PropertyMapping[(int)properties[0]].PadRight(21, ' '), properties[1]);
+                                    }
+                                    Console.WriteLine("");
                                 }
+                                /*
+                                    ...
+                                    accountDBID          : 2016494874
+                                    avatarId             : 919187
+                                    camouflageInfo       :
+                                    clanColor            : 13427940
+                                    clanID               : 2000008825
+                                    clanTag              : TF44
+                                    crewParams           : System.Collections.ArrayList
+                                    dogTag               : System.Collections.ArrayList
+                                    fragsCount           : 0
+                                    friendlyFireEnabled  : False
+                                    id                   : 537149649
+                                    invitationsEnabled   : True
+                                    isAbuser             : False
+                                    isAlive              : True
+                                    isBot                : False
+                                    isClientLoaded       : False
+                                    isConnected          : True
+                                    isHidden             : False
+                                    isLeaver             : False
+                                    isPreBattleOwner     : False
+                                    killedBuildingsCount : 0
+                                    maxHealth            : 27500
+                                    name                 : notyourfather
+                                    playerMode           : Razorvine.Pickle.Objects.ClassDict
+                                    preBattleIdOnStart   : 537256655
+                                    preBattleSign        : 0
+                                    prebattleId          : 537256655
+                                    realm                : ASIA
+                                    shipComponents       : System.Collections.Hashtable
+                                    shipId               : 919188
+                                    shipParamsId         : 4288591856
+                                    skinId               : 4288591856
+                                    teamId               : 0
+                                    ttkStatus            : False
+                                    ...
+                                 */
                             }
                         }
                     }

@@ -6,4 +6,9 @@
     <RootNamespace>Replays_Unpack_CS</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="KaitaiStruct.Runtime.CSharp" Version="0.9.0" />
+    <PackageReference Include="Razorvine.Pickle" Version="1.1.0" />
+  </ItemGroup>
+
 </Project>
