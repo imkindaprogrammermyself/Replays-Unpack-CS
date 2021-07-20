@@ -43,7 +43,7 @@ namespace Replays_Unpack_CS
 
         public BinaryStream(MemoryStream stream)
         {
-            stream.Seek(0, SeekOrigin.Begin);
+            //stream.Seek(0, SeekOrigin.Begin);
             var bLen = new byte[4];
             stream.Read(bLen);
             length = BitConverter.ToUInt32(bLen);
@@ -99,7 +99,7 @@ namespace Replays_Unpack_CS
 
         static void Main(string[] args)
         {
-            using (FileStream fs = File.OpenRead(@"C:\Games\World_of_Warships\replays\20210719_222343_PASC006-Atlanta-1942_45_Zigzag.wowsreplay"))
+            using (FileStream fs = File.OpenRead(@"C:\Games\World_of_Warships\replays\20210719_144823_PWSD710-Ragnar_18_NE_ice_islands.wowsreplay"))
             {
                 byte[] bReplaySignature = new byte[4];
                 byte[] bReplayBlockCount = new byte[4];
@@ -162,10 +162,10 @@ namespace Replays_Unpack_CS
                         var em = new EntityMethod(np.rawData);
                         if (em.messageId == 115) // This will probably change.
                         {
-                            Console.WriteLine("{0}: {1}\n", em.entityId, em.messageId);
+                            //Console.WriteLine("{0}: {1}\n", em.entityId, em.messageId);
 
-                            var unk1 = new byte[8]; //?
-                            em.data.value.Read(unk1);
+                            //var unk1 = new byte[8]; //?
+                            //em.data.value.Read(unk1);
 
                             var arenaID = new byte[8];
                             em.data.value.Read(arenaID);
@@ -213,7 +213,7 @@ namespace Replays_Unpack_CS
                                     ...
                                     accountDBID          : 2016494874
                                     avatarId             : 919187
-                                    camouflageInfo       :
+                                    camouflageInfo       : 4205768624, 0
                                     clanColor            : 13427940
                                     clanID               : 2000008825
                                     clanTag              : TF44
@@ -248,6 +248,46 @@ namespace Replays_Unpack_CS
                                     ...
                                  */
                             }
+
+                        } else if (em.messageId == 114) // This will also probably change.
+                        {
+                            var bEntityId = new byte[4];
+                            em.data.value.Read(bEntityId);
+                            var entityId = BitConverter.ToUInt32(bEntityId);
+
+                            var bMessageGroupSize = new byte[1];
+                            em.data.value.Read(bMessageGroupSize);
+                            var bMessageGroup = new byte[bMessageGroupSize[0]];
+                            em.data.value.Read(bMessageGroup);
+                            var messageGroup = Encoding.UTF8.GetString(bMessageGroup);
+
+                            var bMessageContentSize = new byte[1];
+                            em.data.value.Read(bMessageContentSize);
+                            var bMessageContent = new byte[bMessageContentSize[0]];
+                            em.data.value.Read(bMessageContent);
+                            var messageContent = Encoding.UTF8.GetString(bMessageContent);
+
+                            Console.WriteLine("{0} : {1} : {2}", entityId, messageGroup, messageContent);
+                            /*
+                                615476 : battle_team : cv run
+                                615474 : battle_common : nb
+                                615488 : battle_team : lol
+                                615452 : battle_team : lol
+                                615480 : battle_team : ???????bug?
+                                615480 : battle_team : ?????????
+                                615480 : battle_team : ??
+                                615474 : battle_common : ??????
+                                615452 : battle_team : ???????
+                                615480 : battle_team : ???
+                                615480 : battle_team : ??
+                                615480 : battle_team : ????`
+                                615480 : battle_team : ?TM???
+                                615452 : battle_team : ??
+                                615480 : battle_team : ????????
+                                615480 : battle_team : ????????
+                                615480 : battle_team : ??
+                                615452 : battle_team : ? ???????
+                             */
                         }
                     }
                 }
