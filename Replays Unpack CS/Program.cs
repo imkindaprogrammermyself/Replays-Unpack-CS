@@ -47,7 +47,7 @@ namespace Replays_Unpack_CS
             stream.Read(bLen);
             length = BitConverter.ToUInt32(bLen);
             var bValue = new byte[length];
-            stream.Read(bValue);
+            stream.Read(bValue);            
             value = new MemoryStream(bValue);
         }
     }
@@ -69,9 +69,7 @@ namespace Replays_Unpack_CS
             entityId = BitConverter.ToUInt32(bEntityId);
             messageId = BitConverter.ToUInt32(bMessageId);
 
-            var payload = new MemoryStream();
-            stream.CopyTo(payload);
-            data = new BinaryStream(payload);
+            data = new BinaryStream(stream);
         }
     }
 
@@ -100,7 +98,7 @@ namespace Replays_Unpack_CS
 
         static void Main(string[] args)
         {
-            using (FileStream fs = File.OpenRead(@"C:\Games\World_of_Warships\replays\20210627_151609_PBSD598-Black-Cossack_53_Shoreside.wowsreplay"))
+            using (FileStream fs = File.OpenRead(@"C:\Projects\Python\replay-data-extract\sample_replays\20210622_224157_PJSD219-Kitakaze_19_OC_prey.wowsreplay"))
             {
                 byte[] bReplaySignature = new byte[4];
                 byte[] bReplayBlockCount = new byte[4];
@@ -117,7 +115,7 @@ namespace Replays_Unpack_CS
                 fs.Read(bReplayJSONData, 0, jsonDataSize);
 
                 string sReplayJSONData = Encoding.UTF8.GetString(bReplayJSONData);
-                Console.WriteLine(sReplayJSONData);
+                //Console.WriteLine(sReplayJSONData);
 
                 using (var memStream = new MemoryStream())
                 {
@@ -150,17 +148,51 @@ namespace Replays_Unpack_CS
                     {
                         df.CopyTo(decompressedData);
                     }
-                    Console.WriteLine(decompressedData.Length);
+                    //Console.WriteLine(decompressedData.Length);
                     decompressedData.Seek(0, SeekOrigin.Begin);
+                    int called = 0;
                     while (decompressedData.Position != decompressedData.Length)
                     {
                         var np = new NetPacket(decompressedData);
-                        Console.WriteLine("{0}: {1}", np.time, np.type);
+                        //Console.WriteLine("{0}: {1}", np.time, np.type);
                         if (np.type == "08")
                         {
                             var em = new EntityMethod(np.rawData);
-                            //Console.WriteLine(Encoding.UTF8.GetString(em.data.value.ToArray()));
-                            //Console.WriteLine("{0}: {1}", em.entityId, em.messageId);
+                            if (em.messageId == 115) // This will probably change.
+                            {
+                                Console.WriteLine("{0}: {1}", em.entityId, em.messageId);
+
+                                var unk1 = new byte[8]; //?
+                                em.data.value.Read(unk1);
+
+                                var arenaID = new byte[8];
+                                em.data.value.Read(arenaID);
+
+                                var teamBuildTypeID = new byte[1];
+                                em.data.value.Read(teamBuildTypeID);
+
+                                var blobPreBattlesInfoSize = new byte[1];
+                                em.data.value.Read(blobPreBattlesInfoSize);
+                                var blobPreBattlesInfo = new byte[blobPreBattlesInfoSize[0]];
+                                em.data.value.Read(blobPreBattlesInfo);
+
+                                var blobPlayersStatesSize = new byte[1];
+                                em.data.value.Read(blobPlayersStatesSize);
+
+                                if (blobPlayersStatesSize[0] == 255)
+                                {
+                                    var blobPlayerStatesRealSize = new byte[2];
+                                    em.data.value.Read(blobPlayerStatesRealSize);
+                                    var PlayerStatesRealSize = BitConverter.ToUInt16(blobPlayerStatesRealSize);
+                                    em.data.value.Read(new byte[1]); //?
+
+                                    // blobPlayerStates will contain players' information like account id, server realm, etc...
+                                    // but it is serialized via Python's pickle and there's no deserializer for that in C#.
+                                    var blobPlayerStates = new byte[PlayerStatesRealSize];
+                                    em.data.value.Read(blobPlayerStates);
+                                    
+                                }
+                            }
                         }
                     }
                 }
