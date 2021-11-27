@@ -161,7 +161,7 @@ namespace Replays_Unpack_CS
                     {
                         var em = new EntityMethod(np.rawData);
                         // Console.WriteLine("{0}: {1}: {2}\n", em.entityId, em.messageId, em.data.value.Length);
-                        if (em.messageId == 124) // This will probably change.
+                        if (em.messageId == 124) // 10.10=124
                         {
                             // Console.WriteLine("{0}: {1}\n", em.entityId, em.messageId);
 
@@ -206,7 +206,7 @@ namespace Replays_Unpack_CS
                                 {
                                     foreach (object[] properties in player)
                                     {
-                                        Console.WriteLine("{0}: {1}", Constants.PropertyMapping[(int)properties[0]].PadRight(21, ' '), properties[1]);
+                                        //Console.WriteLine("{0}: {1}", Constants.PropertyMapping[(int)properties[0]].PadRight(21, ' '), properties[1]);
                                     }
                                     Console.WriteLine("");
                                 }
@@ -250,7 +250,7 @@ namespace Replays_Unpack_CS
                                  */
                             }
 
-                        } else if (em.messageId == 114) // This will also probably change.
+                        } else if (em.messageId == 122) // 10.10=122,
                         {
                             var bEntityId = new byte[4];
                             em.data.value.Read(bEntityId);
