@@ -12,39 +12,63 @@ namespace Replays_Unpack_CS
         public static Dictionary<int, string> PropertyMapping = new()
         {
             { 0, "accountDBID" },
-            { 1, "avatarId" },
-            { 2, "camouflageInfo" },
-            { 3, "clanColor" },
-            { 4, "clanID" },
-            { 5, "clanTag" },
-            { 6, "crewParams" },
-            { 7, "dogTag" },
-            { 8, "fragsCount" },
-            { 9, "friendlyFireEnabled" },
-            { 10, "id" },
-            { 11, "invitationsEnabled" },
-            { 12, "isAbuser" },
-            { 13, "isAlive" },
-            { 14, "isBot" },
-            { 15, "isClientLoaded" },
-            { 16, "isConnected" },
-            { 17, "isHidden" },
-            { 18, "isLeaver" },
-            { 19, "isPreBattleOwner" },
-            { 20, "killedBuildingsCount" },
-            { 21, "maxHealth" },
-            { 22, "name" },
-            { 23, "playerMode" },
-            { 24, "preBattleIdOnStart" },
-            { 25, "preBattleSign" },
-            { 26, "prebattleId" },
-            { 27, "realm" },
-            { 28, "shipComponents" },
-            { 29, "shipId" },
-            { 30, "shipParamsId" },
-            { 31, "skinId" },
-            { 32, "teamId" },
-            { 33, "ttkStatus" }
+            {
+                1,
+                "antiAbuseEnabled"
+            },
+            { 2, "avatarId" },
+            { 3, "camouflageInfo" },
+            { 4, "clanColor" },
+            {
+                5,
+                "clanID"
+            },
+            { 6, "clanTag" },
+            { 7, "crewParams" },
+            { 8, "dogTag" },
+            { 9, "fragsCount" },
+            { 10, "friendlyFireEnabled" },
+            {
+                11,
+                "id"
+            },
+            { 12, "invitationsEnabled" },
+            { 13, "isAbuser" },
+            { 14, "isAlive" },
+            { 15, "isBot" },
+            { 16, "isClientLoaded" },
+            {
+                17,
+                "isConnected"
+            },
+            { 18, "isHidden" },
+            { 19, "isLeaver" },
+            { 20, "isPreBattleOwner" },
+            { 21, "isTShooter" },
+            {
+                22,
+                "killedBuildingsCount"
+            },
+            { 23, "maxHealth" },
+            { 24, "name" },
+            { 25, "playerMode" },
+            { 26, "preBattleIdOnStart" },
+            {
+                27,
+                "preBattleSign"
+            },
+            { 28, "prebattleId" },
+            { 29, "realm" },
+            { 30, "shipComponents" },
+            { 31, "shipConfigDump" },
+            {
+                32,
+                "shipId"
+            },
+            { 33, "shipParamsId" },
+            { 34, "skinId" },
+            { 35, "teamId" },
+            { 36, "ttkStatus" }
         };
     }
 }

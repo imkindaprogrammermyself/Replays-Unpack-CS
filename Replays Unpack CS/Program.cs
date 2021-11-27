@@ -99,7 +99,7 @@ namespace Replays_Unpack_CS
 
         static void Main(string[] args)
         {
-            using (FileStream fs = File.OpenRead(@"C:\Games\World_of_Warships\replays\20210719_144823_PWSD710-Ragnar_18_NE_ice_islands.wowsreplay"))
+            using (FileStream fs = File.OpenRead(@"C:\Projects\CSharp\Replays Unpack CS\Replays Unpack CS\10.10.wowsreplay"))
             {
                 byte[] bReplaySignature = new byte[4];
                 byte[] bReplayBlockCount = new byte[4];
@@ -160,9 +160,10 @@ namespace Replays_Unpack_CS
                     if (np.type == "08")
                     {
                         var em = new EntityMethod(np.rawData);
-                        if (em.messageId == 115) // This will probably change.
+                        // Console.WriteLine("{0}: {1}: {2}\n", em.entityId, em.messageId, em.data.value.Length);
+                        if (em.messageId == 124) // This will probably change.
                         {
-                            //Console.WriteLine("{0}: {1}\n", em.entityId, em.messageId);
+                            // Console.WriteLine("{0}: {1}\n", em.entityId, em.messageId);
 
                             //var unk1 = new byte[8]; //?
                             //em.data.value.Read(unk1);
